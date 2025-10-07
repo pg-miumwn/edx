@@ -1,0 +1,42 @@
+name: Automate link
+
+on:
+  workflow_dispatch:
+  schedule:
+    # Run every hour (optional - remove if you only want manual triggers)
+    - cron: '0/30 * * * *'
+
+jobs:
+  run-check:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+      
+      - name: Install Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      
+      - name: Install dependencies
+        run: |
+          pip install cloudscraper requests cryptography
+      
+      - name: Run check script
+        env:
+          ENCRYPTION_KEY: ${{ secrets.ENCRYPTION_KEY }}
+          ENDPOINT_URL: ${{ secrets.ENDPOINT_URL }}
+          NTFY_ENDPOINT: ${{ secrets.NTFY_ENDPOINT }}
+        run: python check_link.py
+      
+      - name: Commit and push if changed
+        run: |
+          git config --local user.email "github-actions[bot]@users.noreply.github.com"
+          git config --local user.name "github-actions[bot]"
+          git add content.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update content.json [automated]" && git push)
